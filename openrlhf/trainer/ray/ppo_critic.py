@@ -102,7 +102,7 @@ class CriticModelRayActor(BasePPORole):
         critic_scheduler = get_scheduler(
             "cosine_with_min_lr",
             critic_optim,
-            num_warmup_steps=math.ceil(max_steps * args.lr_warmup_ratio),
+            num_warmup_steps=50,
             num_training_steps=max_steps,
             scheduler_specific_kwargs={"min_lr": args.critic_learning_rate * 0.1},
         )
@@ -193,5 +193,5 @@ class CriticModelRayActor(BasePPORole):
     def save_checkpoint(self, tag):
         args = self.strategy.args
         self.strategy.save_ckpt(
-            self.critic, os.path.join(args.ckpt_path, "_critic"), tag, args.max_ckpt_num, args.max_ckpt_mem
+            self.critic, os.path.join(args.save_path, "_critic"), tag, args.max_ckpt_num, args.max_ckpt_mem
         )

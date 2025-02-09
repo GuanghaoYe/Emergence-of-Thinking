@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List
 
 import ray
+import os
 import torch
 from ray.util.placement_group import placement_group
 
@@ -352,6 +353,12 @@ if __name__ == "__main__":
         default="ppo_%s" % datetime.now().strftime("%m%dT%H:%M"),
     )
 
+    parser.add_argument(
+        "--note",
+        type=str,
+        default="",
+    )
+
     # TensorBoard parameters
     parser.add_argument("--use_tensorboard", type=str, default=None, help="TensorBoard logging path")
 
@@ -360,6 +367,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    args.wandb_run_name = (
+        f"{os.path.basename(args.pretrain)}_plen{args.prompt_max_len}_glen{args.generate_max_len}_mbs{args.micro_train_batch_size}"
+        f"_eps-{args.num_episodes}_epc-{args.max_epochs}"
+        f"_kl-{args.init_kl_coef}"
+        f"_pack-{args.packing_samples}"
+        f"_mrbs-{args.micro_rollout_batch_size}"
+        f"_rbs-{args.rollout_batch_size}_alr{args.actor_learning_rate}_ppo{datetime.now().strftime('%m%dT%H:%M')}_note{args.note}"
+    )
     if args.advantage_estimator not in ["gae"]:
         args.critic_pretrain = None
     elif args.critic_pretrain is None:

@@ -787,6 +787,57 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
                 )
         return samples_list
 
+    def _generate_vllm_iterative(self, all_prompts: List[str], **kwargs) -> List[Samples]:
+        from vllm import SamplingParams
+
+        # round-robin load balance
+        rank = torch.distributed.get_rank()
+        world_size = torch.distributed.get_world_size()
+
+        # Select LLM engines: assign each rank an engine, or cycle through engines if world_size < engine_count
+        if len(self.vllm_engines) <= world_size:
+            llms = [self.vllm_engines[rank % len(self.vllm_engines)]]
+        else:
+            llms = self.vllm_engines[rank::world_size]
+
+        args = self.strategy.args
+
+        sampling_params = SamplingParams(
+            temperature=kwargs.get("temperature", 1.0),
+            top_p=kwargs.get("top_p", 1.0),
+            top_k=kwargs.get("top_k", -1),
+            max_tokens=kwargs.get("max_new_tokens", 1024),
+            min_tokens=kwargs.get("min_new_tokens", 1),
+            skip_special_tokens=kwargs.get("skip_special_tokens", False),
+        )
+
+        # Expand prompt list based on the number of samples per prompt
+        all_prompts = sum([[prompt] * args.n_samples_per_prompt for prompt in all_prompts], [])
+        all_prompt_token_ids = self.tokenize_fn(all_prompts, self.prompt_max_len, padding=False)["input_ids"]
+
+        # Distribute requests to engines and collect responses to outputs
+        all_output_refs = []
+        batch_size = (len(all_prompt_token_ids) + len(llms) - 1) // len(llms)
+        for i, llm in enumerate(llms):
+            prompt_token_ids = all_prompt_token_ids[i * batch_size : (i + 1) * batch_size]
+            if prompt_token_ids:
+                all_output_refs.append(
+                    llm.generate.remote(sampling_params=sampling_params, prompt_token_ids=prompt_token_ids)
+                )
+
+        # Retrieve and combine results from all outputs
+        all_outputs = sum(ray.get(all_output_refs), [])
+
+        # for output in all_outputs:
+
+        # r_refs = []
+        # queries = self.tokenizer.batch_decode(sequences_list, skip_special_tokens=False)
+        # for rm in self.remote_rm_url:
+            # r = remote_rm_fn_ray.remote(rm, queries=queries)
+            # r_refs.append(r)
+
+        return None
+
     def flush(self):
         "Ensure all experience has been send to critic"
         if self.critic is not None:

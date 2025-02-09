@@ -165,7 +165,7 @@ class PPOTrainer(ABC):
             if not wandb.api.api_key:
                 wandb.login(key=strategy.args.use_wandb)
             wandb.init(
-                entity=strategy.args.wandb_org,
+                # entity=strategy.args.wandb_org,
                 project=strategy.args.wandb_project,
                 group=strategy.args.wandb_group,
                 name=strategy.args.wandb_run_name,
@@ -247,7 +247,10 @@ class PPOTrainer(ABC):
                 if "kl" in status:
                     self.kl_ctl.update(status["kl"], args.rollout_batch_size * args.n_samples_per_prompt)
                 pbar.set_postfix(status)
-
+                if self.strategy.is_rank_0():
+                    if isinstance(output, list) and len(output) > 0:
+                        output = output[0]
+                        status["sample_output"] = output
                 # logs/checkpoints
                 client_states = {"consumed_samples": steps * args.rollout_batch_size}
                 self.save_logs_and_checkpoints(args, steps, pbar, status, client_states)

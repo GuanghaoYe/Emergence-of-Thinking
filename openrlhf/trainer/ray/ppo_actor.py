@@ -10,7 +10,7 @@ import torch
 import torch.distributed
 from transformers.trainer import get_scheduler
 
-from openrlhf.datasets import PromptDataset, SFTDataset
+from openrlhf.datasets import PromptDataset, SFTDataset, CodeContextPromptDataset
 from openrlhf.models import Actor
 from openrlhf.trainer import PPOTrainer
 from openrlhf.trainer.ppo_utils import Experience, RemoteExperienceMaker
@@ -191,14 +191,14 @@ class ActorPPOTrainer(PPOTrainer):
                 ref = self.critic.save_checkpoint.remote(tag)
             self.strategy.save_ckpt(
                 self.actor.model,
-                os.path.join(args.ckpt_path, "_actor"),
+                os.path.join(args.save_path, "_actor"),
                 tag,
                 args.max_ckpt_num,
                 args.max_ckpt_mem,
                 client_states,
             )
         if self.save_hf_ckpt:
-            save_path = os.path.join(args.ckpt_path, f"{tag}_hf")
+            save_path = os.path.join(args.save_path, f"{tag}_hf")
             self.strategy.save_model(
                 self.ema_model if args.enable_ema else self.actor,
                 self.tokenizer,
@@ -273,7 +273,7 @@ class ActorModelRayActor(BasePPORole):
         actor_scheduler = get_scheduler(
             "cosine_with_min_lr",
             actor_optim,
-            num_warmup_steps=math.ceil(max_steps * args.lr_warmup_ratio),
+            num_warmup_steps=50,
             num_training_steps=max_steps,
             scheduler_specific_kwargs={"min_lr": args.actor_learning_rate * 0.1},
         )
@@ -318,7 +318,7 @@ class ActorModelRayActor(BasePPORole):
             train_split=args.prompt_split,
         )
         prompts_data = prompts_data.select(range(min(args.max_samples, len(prompts_data))))
-        self.prompts_dataset = PromptDataset(
+        self.prompts_dataset = CodeContextPromptDataset(
             prompts_data, self.tokenizer, strategy, input_template=args.input_template
         )
         self.prompts_dataloader = strategy.setup_dataloader(

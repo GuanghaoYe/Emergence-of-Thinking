@@ -15,11 +15,14 @@ def request_api_wrapper(url, data, score_key="rewards", try_max_times=5):
     }
     for _ in range(try_max_times):
         try:
-            response = requests.post(url=url, json=data, headers=headers, timeout=180)
+            response = requests.post(url=url, json=data, headers=headers, timeout=360)
             response.raise_for_status()  # Raise an HTTPError for bad responses
             response = response.json()
-            assert score_key in response, f"{score_key} not in {response}"
-            return response.get(score_key)
+            if not score_key is None:
+                assert score_key in response, f"{score_key} not in {response}"
+                return response.get(score_key)
+            else:
+                return response
         except requests.RequestException as e:
             logger.info(f"Request error, please check: {e}")
         except Exception as e:
@@ -38,6 +41,16 @@ def remote_rm_fn(api_url, queries, prompts, score_key="rewards"):
     """
     scores = request_api_wrapper(api_url, {"query": queries, "prompts": prompts}, score_key)
     return torch.tensor(scores)
+
+def remote_nl_rm_fn(api_url, queries):
+    """remote reward model API
+    api_url: RM API, We assume that the API supports two modes: merging query + response and not merging
+    queries: query+response with the template
+    design is made optional.
+    score_key: RM score key
+    """
+    rm_dict = request_api_wrapper(api_url, {"query": queries}, score_key=None)
+    return rm_dict
 
 
 @ray.remote

@@ -79,9 +79,9 @@ class SFTTrainer(ABC):
             if not wandb.api.api_key:
                 wandb.login(key=strategy.args.use_wandb)
             wandb.init(
-                entity=strategy.args.wandb_org,
+                # entity=strategy.args.wandb_org,
                 project=strategy.args.wandb_project,
-                group=strategy.args.wandb_group,
+                # group=strategy.args.wandb_group,
                 name=strategy.args.wandb_run_name,
                 config=strategy.args.__dict__,
                 reinit=True,
