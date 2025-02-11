@@ -2,7 +2,7 @@
 
 This repository contains the code for the paper "On the Emergence of Thinking in LLMs I: Searching for the Right Intuition"
 
-Arxiv link: [Coming Soon](https://arxiv.org/abs/)
+[arXiv link](https://arxiv.org/abs/2502.06773)
 
 ## Environment
 
@@ -41,3 +41,4 @@ bash train_ppo_qwen_ray_32B_rm_multi.sh 3
 
 ## Acknowledgement
 The repo is based on the code from [OpenRLHF](https://github.com/OpenRLHF/OpenRLHF) and the evaluation code is taken from [Qwen](https://github.com/QwenLM/Qwen2.5-Math)
+
